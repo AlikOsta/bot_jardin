@@ -1,7 +1,9 @@
 from aiogram.types import CallbackQuery
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
-from kb import AGE_KB, SHIFT_KB, START_KB, BACK_KB, ADMIN_KB, BOOL_KB, STAFF_KB
+from aiogram import types
+from aiogram.enums import ParseMode
+from kb import AGE_KB, SHIFT_KB, START_KB, BACK_KB, ADMIN_KB, BOOL_KB, STAFF_KB, BACK_SETTINGS_KB
 
 
 async def render_start(target: Message | CallbackQuery):
@@ -33,17 +35,17 @@ async def render_additional(callback: CallbackQuery):
     await callback.message.edit_text(text=text, reply_markup=BACK_KB)
     
 
-async def render_age(callback: CallbackQuery, state: FSMContext):
+async def render_age(callback: CallbackQuery):
     text = "Сколько лет ребёнку?"
     await callback.message.edit_text(text=text, reply_markup=AGE_KB)
 
 
-async def render_shift(callback: CallbackQuery, state: FSMContext):
+async def render_shift(callback: CallbackQuery):
     text = "Выберете смену:"
     await callback.message.edit_text(text=text, reply_markup=SHIFT_KB)
 
 
-async def render_notes(callback: CallbackQuery, state: FSMContext):
+async def render_notes(callback: CallbackQuery):
     text = "Есть ли аллергия или особенности?"
     await callback.message.edit_text(text=text)
 
@@ -59,19 +61,20 @@ async def post_admin(message: Message, data, bot, ADMIN_CHAT_ID):
     await bot.send_message(ADMIN_CHAT_ID, text)
 
 
-async def render_settings_age(callback: CallbackQuery):
-    text = "Давайте настроим наличее свободных мест.\nВыберете возростную группу."
-    await callback.message.edit_text(text=text, reply_markup=AGE_KB)
+async def render_settings_age(callback: CallbackQuery, slots_list):
+    lines = ["Возраст  | Смена          | Статус"]
+    lines.append("─" * len(lines[0]))
 
+    for age_group, shift, available in slots_list:
+        status = "✅" if available else "❌"
+        lines.append(
+            f"{age_group.ljust(8)} | {shift.ljust(14)} | {status}"
+        )
 
-async def render_settings_age(callback: CallbackQuery):
-    text = "Давайте настроим наличее свободных мест.\nВыберете возростную группу."
-    await callback.message.edit_text(text=text, reply_markup=AGE_KB)
-
-
-async def render_settings_slots(callback: CallbackQuery):
-    text = "Есть ли места?"
-    await callback.message.edit_text(text=text, reply_markup=BOOL_KB)
+    table = "\n".join(lines)
+    text = ("<pre>" + table + "</pre>")
+    text += "\n\nВыберите возрастную группу:"
+    await callback.message.edit_text( text=text, parse_mode=ParseMode.HTML, reply_markup=AGE_KB)
 
 
 async def render_settings_slots(callback: CallbackQuery):
@@ -81,17 +84,7 @@ async def render_settings_slots(callback: CallbackQuery):
 
 async def render_success(callback: CallbackQuery):
     text = "Изменения внесены успешно!"
-    await callback.message.edit_text(text=text)
-
-
-async def render_slots_age(callback: CallbackQuery):
-    text = "Давайте проверим наличее свободных мест.\nВыберете возростную группу."
-    await callback.message.edit_text(text=text, reply_markup=AGE_KB)
-
-
-async def render_slots_shift(callback: CallbackQuery):
-    text = "Какую смену нужно изменить?"
-    await callback.message.edit_text(text=text, reply_markup=SHIFT_KB)
+    await callback.message.edit_text(text=text, reply_markup=BACK_SETTINGS_KB)
 
 
 async def render_show_get_slots(callback: CallbackQuery):
@@ -116,7 +109,7 @@ async def render_staff_list(callback: CallbackQuery, staff_list):
 
 
 async def render_get_staff(callback: CallbackQuery):
-    text = "Пришлите username пользователя"
+    text = "Пришлите @username пользователя"
     await callback.message.edit_text(text=text)
 
 

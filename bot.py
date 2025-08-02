@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import CallbackQuery
 from aiogram import F
-from db import set_availability, get_availability, get_user, add_user, get_is_staff, set_is_staff, all_staff, get_user_id
+from db import set_availability, get_availability, get_user, add_user, get_is_staff, set_is_staff, all_staff, get_user_id, all_slots
 
 from fsm_utils import push_state, go_back
 from hendlers import *
@@ -27,6 +27,11 @@ dp = Dispatcher(storage=MemoryStorage())
 @dp.callback_query(F.data == "back")
 async def back(callback: CallbackQuery):
     await render_start(callback)
+
+
+@dp.callback_query(F.data == "back_to_settings")
+async def back_to_settings(callback: CallbackQuery):
+    await render_settings(callback)
 
 
 @dp.message(Command("start"))
@@ -79,7 +84,7 @@ async def process_age(callback: CallbackQuery, state: FSMContext):
         await go_back(callback, state)
         return  
     await push_state(state, VisitForm.age)
-    await render_age(callback, state)
+    await render_age(callback)
     
 
 @dp.callback_query(VisitForm.age)
@@ -90,7 +95,7 @@ async def process_shift(callback: CallbackQuery, state: FSMContext):
     age = callback.data
     await state.update_data(age=age)
     await push_state(state, VisitForm.shift)
-    await render_shift(callback, state)
+    await render_shift(callback)
     
 
 @dp.callback_query(VisitForm.shift)
@@ -102,7 +107,7 @@ async def process_notes(callback: CallbackQuery, state: FSMContext):
     shift = callback.data
     await state.update_data(shift=shift)
     await push_state(state, VisitForm.notes)
-    await render_notes(callback, state)
+    await render_notes(callback)
     
 
 @dp.message(VisitForm.notes)
@@ -115,7 +120,6 @@ async def print_data(message: Message, state: FSMContext):
     else:
         await render_not_slots(message)
     await state.clear()
-
     
 
 class ShiftSetup(StatesGroup):
@@ -126,28 +130,41 @@ class ShiftSetup(StatesGroup):
 
 @dp.callback_query(F.data == "settings")
 async def get_age(callback: CallbackQuery, state: FSMContext):
-    await render_settings_age(callback)
-    await state.set_state(ShiftSetup.age)
+    slots_list = await all_slots()
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
+    await push_state(state, ShiftSetup.age)
+    await render_settings_age(callback, slots_list)
 
 
 @dp.callback_query(ShiftSetup.age)
 async def get_shift(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
     age = callback.data
     await state.update_data(age=age)
+    await push_state(state, ShiftSetup.shift)
     await render_shift(callback)
-    await state.set_state(ShiftSetup.shift)
 
 
 @dp.callback_query(ShiftSetup.shift)
-async def get_places(callback: CallbackQuery, state: FSMContext):    
+async def get_places(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return    
     shift = callback.data
     await state.update_data(shift=shift)
+    await push_state(state, ShiftSetup.places)
     await render_settings_slots(callback)
-    await state.set_state(ShiftSetup.places)
 
 
 @dp.callback_query(ShiftSetup.places)
 async def process_shift(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return 
     raw_value = callback.data.strip() 
     places = raw_value == "True"
     await state.update_data(places=places)
@@ -164,20 +181,29 @@ class GetSlots(StatesGroup):
 
 @dp.callback_query(F.data == "сheck")
 async def get_slots_age(callback: CallbackQuery, state: FSMContext):
-    await render_slots_age(callback)
-    await state.set_state(GetSlots.age)
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
+    await push_state(state, GetSlots.age)
+    await render_age(callback)
 
 
 @dp.callback_query(GetSlots.age)
 async def get_slots_shift(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
     age = callback.data
     await state.update_data(age=age)
-    await render_slots_shift(callback)
-    await state.set_state(GetSlots.shift)
+    await push_state(state, GetSlots.shift)
+    await render_shift(callback)
 
 
 @dp.callback_query(GetSlots.shift)
 async def show_get_slots(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
     shift = callback.data
     await state.update_data(shift=shift)
     data = await state.get_data()
@@ -200,8 +226,11 @@ class AddStaff(StatesGroup):
 
 @dp.callback_query(F.data == "add_staff")
 async def get_staff(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
+    await push_state(state, AddStaff.username)
     await render_get_staff(callback)
-    await state.set_state(AddStaff.username)
 
 
 @dp.message(AddStaff.username)
@@ -213,7 +242,7 @@ async def add_staff(message: Message, state: FSMContext):
         await set_is_staff(user_id, True)
         await render_get_user_id_success(message, username)
     else:
-        await render_get_user_id_fall(message, username)
+        await render_add_staff_fall(message, username)
     await state.clear()
 
 
@@ -223,8 +252,11 @@ class RemStaff(StatesGroup):
 
 @dp.callback_query(F.data == "rem_staff")
 async def get_staff(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return
+    await push_state(state, RemStaff.username)
     await render_get_staff(callback)
-    await state.set_state(RemStaff.username)
 
 
 @dp.message(RemStaff.username)

@@ -123,6 +123,13 @@ async def set_is_staff(id_telegram: int, value: bool):
         )
         await db.commit()
 
+async def all_slots():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            "SELECT age_group, shift, available FROM slots"
+        )
+        rows = await cursor.fetchall()
+        return rows 
 
 if __name__ == "__main__":
     asyncio.run(init_db())
