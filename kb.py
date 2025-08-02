@@ -6,8 +6,6 @@ BACK_KB = InlineKeyboardMarkup(
     ]
 )
 
-BACK_BTN = InlineKeyboardButton(text="⬅️ Назад", callback_data="go_back")
-
 AGE_KB = InlineKeyboardMarkup(
     inline_keyboard=[
         [
@@ -18,6 +16,7 @@ AGE_KB = InlineKeyboardMarkup(
             InlineKeyboardButton(text="4-5 лет", callback_data="4-5 лет"),
             InlineKeyboardButton(text="5-7 лет", callback_data="5-7 лет"),
         ],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")]
     ]
 )
 
@@ -28,7 +27,8 @@ SHIFT_KB = InlineKeyboardMarkup(
             InlineKeyboardButton(text="Утро 09:00-13:30", callback_data="Утро"),
             InlineKeyboardButton(text="Вечер 13:30-18:00", callback_data="Вечер"),
         ],
-        [InlineKeyboardButton(text="Полный день 09:00-18:00", callback_data="Полный день")],        
+        [InlineKeyboardButton(text="Полный день 09:00-18:00", callback_data="Полный день")],  
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")]      
     ]
 )
 
@@ -62,6 +62,7 @@ BOOL_KB = InlineKeyboardMarkup(
             InlineKeyboardButton(text="✅ Да", callback_data='True'),
             InlineKeyboardButton(text="❌ Нет", callback_data='False')
         ],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")]
     ]
 )
 
@@ -71,6 +72,7 @@ STAFF_KB = InlineKeyboardMarkup(
             InlineKeyboardButton(text="✅ Добавить", callback_data='add_staff'),
             InlineKeyboardButton(text="❌ Удалить", callback_data='rem_staff')
         ],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")]
     ]
 )
 

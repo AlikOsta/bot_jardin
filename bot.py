@@ -8,10 +8,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import CallbackQuery
 from aiogram import F
-from dotenv import load_dotenv
 from db import set_availability, get_availability, get_user, add_user, get_is_staff, set_is_staff, all_staff, get_user_id
-from kb import AGE_KB, SHIFT_KB, START_KB, BACK_KB, ADMIN_KB, BOOL_KB, STAFF_KB, BACK_BTN
 
+from fsm_utils import push_state, go_back
+from hendlers import *
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -24,10 +25,8 @@ dp = Dispatcher(storage=MemoryStorage())
 
 
 @dp.callback_query(F.data == "back")
-async def go_back(callback: CallbackQuery):
-    text = "Привет.\n Я помогу тебе записаться в детский садик."
-    await callback.message.edit_text(text=text, reply_markup=START_KB)
-    await callback.answer()
+async def back(callback: CallbackQuery):
+    await render_start(callback)
 
 
 @dp.message(Command("start"))
@@ -42,8 +41,7 @@ async def cmd_start(message: Message, state: FSMContext):
             username=message.from_user.username,
             is_staff=False
         )
-    text = "Привет.\n Я помогу тебе записаться в детский садик."
-    await message.answer(text=text, reply_markup=START_KB)
+    await render_start(message)
 
 
 @dp.message(Command("settings"))
@@ -51,29 +49,22 @@ async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     is_staff = await get_is_staff(message.from_user.id)
     if is_staff:
-        text = "Настройки для админа"
-        await message.answer(text=text, reply_markup=ADMIN_KB)
+        await render_settings(message)
 
 
 @dp.callback_query(F.data == "about")
 async def show_about(callback: CallbackQuery):
-    text = "Это наш детский сад. Здесь весело и интересно!"
-    await callback.message.edit_text(text=text, reply_markup=BACK_KB)
-    await callback.answer()
+    await render_about(callback)
 
 
 @dp.callback_query(F.data == "schedule")
 async def show_schedule(callback: CallbackQuery):
-    text = "Расписание и оплата"
-    await callback.message.edit_text(text=text, reply_markup=BACK_KB)
-    await callback.answer() 
+    await render_schedule(callback)
 
 
 @dp.callback_query(F.data == "additional")
 async def show_additional(callback: CallbackQuery):
-    text = "Дополнительные занятия и кружки"
-    await callback.message.edit_text(text=text, reply_markup=BACK_KB)
-    await callback.answer()
+    await render_additional(callback)
 
 
 class VisitForm(StatesGroup):
@@ -81,57 +72,50 @@ class VisitForm(StatesGroup):
     shift = State()
     notes = State()
 
+
 @dp.callback_query(F.data == "apply")
 async def process_age(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await state.clear()
-    text = "Сколько лет ребёнку?"
-    await callback.message.edit_text(text=text, reply_markup=AGE_KB)
-    await state.set_state(VisitForm.age)
-
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return  
+    await push_state(state, VisitForm.age)
+    await render_age(callback, state)
+    
 
 @dp.callback_query(VisitForm.age)
 async def process_shift(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return  
     age = callback.data
     await state.update_data(age=age)
-    await callback.answer()
-    text = "Какую смену вы хотите?"
-    await callback.message.edit_text(text=text, reply_markup=SHIFT_KB)
-    await state.set_state(VisitForm.shift)
-
+    await push_state(state, VisitForm.shift)
+    await render_shift(callback, state)
+    
 
 @dp.callback_query(VisitForm.shift)
 async def process_notes(callback: CallbackQuery, state: FSMContext):
-    shift = callback.data
-    await state.update_data(shift=shift, previous=VisitForm.shift.state)
-    await callback.answer()
-    text = "Есть ли аллергия или особенности?"
-    await callback.message.edit_text(text=text)
-    await state.set_state(VisitForm.notes)
+    if callback.data == "go_back":
+        await go_back(callback, state)
+        return  
 
+    shift = callback.data
+    await state.update_data(shift=shift)
+    await push_state(state, VisitForm.notes)
+    await render_notes(callback, state)
+    
 
 @dp.message(VisitForm.notes)
 async def print_data(message: Message, state: FSMContext):
     await state.update_data(notes=message.text)
     data = await state.get_data()
     if await get_availability(data['age'], data['shift']):
-        await post_admin(message, data)
-        text = "Спасибо за заявку! Администратор свяжится с вами в близжайшее время!"
+        await post_admin(message, data, bot, ADMIN_CHAT_ID)
+        await render_visit_form_success(message)
     else:
-        text = "В данный момент свободныхмест нет!"
-    await message.answer(text=text, reply_markup=BACK_KB)
+        await render_not_slots(message)
     await state.clear()
 
-
-async def post_admin(message: Message, data):
-    text = (
-        f"Пользователь {message.from_user.first_name} {message.from_user.last_name},\n"
-        f"Телеграм для связи @{message.from_user.username},\n"
-        f"Ребенку {data['age']},\n"
-        f"Смена {data['shift']},\n"
-        f"Аллергия или особенности: {data['notes']}."
-    )
-    await bot.send_message(ADMIN_CHAT_ID, text)
     
 
 class ShiftSetup(StatesGroup):
@@ -142,9 +126,7 @@ class ShiftSetup(StatesGroup):
 
 @dp.callback_query(F.data == "settings")
 async def get_age(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    text = "Давайте настроим наличее мест для детей.\nВыберете возростную группу."
-    await callback.message.edit_text(text=text, reply_markup=AGE_KB)
+    await render_settings_age(callback)
     await state.set_state(ShiftSetup.age)
 
 
@@ -152,19 +134,15 @@ async def get_age(callback: CallbackQuery, state: FSMContext):
 async def get_shift(callback: CallbackQuery, state: FSMContext):
     age = callback.data
     await state.update_data(age=age)
-    await callback.answer()
-    text = "Какую смену нужно изменить?"
-    await callback.message.edit_text(text=text, reply_markup=SHIFT_KB)
+    await render_shift(callback)
     await state.set_state(ShiftSetup.shift)
 
 
 @dp.callback_query(ShiftSetup.shift)
-async def get_places(callback: CallbackQuery, state: FSMContext):
+async def get_places(callback: CallbackQuery, state: FSMContext):    
     shift = callback.data
     await state.update_data(shift=shift)
-    await callback.answer()
-    text = "Есть ли места?"
-    await callback.message.edit_text(text=text, reply_markup=BOOL_KB)
+    await render_settings_slots(callback)
     await state.set_state(ShiftSetup.places)
 
 
@@ -175,9 +153,7 @@ async def process_shift(callback: CallbackQuery, state: FSMContext):
     await state.update_data(places=places)
     data = await state.get_data()
     await set_availability(data["age"], data["shift"], data["places"])
-    await callback.answer()
-    text = "Изменения внесены успешно!"
-    await callback.message.edit_text(text=text)
+    await render_success(callback) 
     await state.clear()
 
 
@@ -188,9 +164,7 @@ class GetSlots(StatesGroup):
 
 @dp.callback_query(F.data == "сheck")
 async def get_slots_age(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    text = "Давайте проверим наличее свободных мест.\nВыберете возростную группу."
-    await callback.message.edit_text(text=text, reply_markup=AGE_KB)
+    await render_slots_age(callback)
     await state.set_state(GetSlots.age)
 
 
@@ -198,9 +172,7 @@ async def get_slots_age(callback: CallbackQuery, state: FSMContext):
 async def get_slots_shift(callback: CallbackQuery, state: FSMContext):
     age = callback.data
     await state.update_data(age=age)
-    await callback.answer()
-    text = "Какую смену нужно изменить?"
-    await callback.message.edit_text(text=text, reply_markup=SHIFT_KB)
+    await render_slots_shift(callback)
     await state.set_state(GetSlots.shift)
 
 
@@ -208,24 +180,18 @@ async def get_slots_shift(callback: CallbackQuery, state: FSMContext):
 async def show_get_slots(callback: CallbackQuery, state: FSMContext):
     shift = callback.data
     await state.update_data(shift=shift)
-    await callback.answer()
     data = await state.get_data()
     if await get_availability(data["age"], data["shift"]):
-        text = "Свободные места есть. Оставьте заявку и администратор свяжится свами!"
+        await render_show_get_slots(callback)
     else:
-        text = "В данный момент свободныхмест нет!"
-    await callback.message.edit_text(text=text, reply_markup=BACK_KB)
+        await render_not_slots(callback)
     await state.clear()
 
 
 @dp.callback_query(F.data == "get_staff")
 async def show_staff(callback: CallbackQuery):
     staff_list = await all_staff()
-    text = "Список адмираторов:\n\n"
-    for row in staff_list:
-        user_id, first_name, last_name, username = row
-        text += f"• {first_name} {last_name or ''} (@{username})\n"
-    await callback.message.edit_text(text=text, reply_markup=STAFF_KB)
+    await render_staff_list(callback, staff_list)
 
 
 class AddStaff(StatesGroup):
@@ -234,10 +200,7 @@ class AddStaff(StatesGroup):
 
 @dp.callback_query(F.data == "add_staff")
 async def get_staff(callback: CallbackQuery, state: FSMContext):
-    print("add staff")
-    await callback.answer()
-    text = "Пришли username пользователя"
-    await callback.message.edit_text(text=text)
+    await render_get_staff(callback)
     await state.set_state(AddStaff.username)
 
 
@@ -245,14 +208,12 @@ async def get_staff(callback: CallbackQuery, state: FSMContext):
 async def add_staff(message: Message, state: FSMContext):
     username = message.text.strip().lstrip("@")
     await state.update_data(username=username)
-
     user_id = await get_user_id(username)
     if user_id:
         await set_is_staff(user_id, True)
-        text = f"Пользователь @{username} Добавлен в администраторы"
+        await render_get_user_id_success(message, username)
     else:
-        text = f"Пользователь @{username} не разегестрирован!"
-    await message.answer(text=text)
+        await render_get_user_id_fall(message, username)
     await state.clear()
 
 
@@ -262,10 +223,7 @@ class RemStaff(StatesGroup):
 
 @dp.callback_query(F.data == "rem_staff")
 async def get_staff(callback: CallbackQuery, state: FSMContext):
-    print("rem staff")
-    await callback.answer()
-    text = "Пришли username администратора"
-    await callback.message.edit_text(text=text)
+    await render_get_staff(callback)
     await state.set_state(RemStaff.username)
 
 
@@ -277,14 +235,14 @@ async def add_staff(message: Message, state: FSMContext):
     user_id = await get_user_id(username)
     if user_id:
         await set_is_staff(user_id, False)
-        text = f"Администратор @{username} удален."
+        await render_add_staff_success(message, username)
     else:
-        text = f"Пользователь @{username} не разегестрирован!"
-    await message.answer(text=text)
+        await render_add_staff_fall(message, username)
     await state.clear()
 
 
 async def main():
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 
