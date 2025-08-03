@@ -6,18 +6,17 @@ BACK_KB = InlineKeyboardMarkup(
     ]
 )
 
-SKOTS_BACK = InlineKeyboardMarkup(
+SKOTS_BASK = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="Вернуться к насройкам", callback_data='back_to_settings')],
+        [InlineKeyboardButton(text="Оставить заявку", callback_data='apply')],
+        [InlineKeyboardButton(text="Вернуться в меню", callback_data='back')],
     ]
 )
 
+
 BACK_SETTINGS_KB = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Оставить заявку", callback_data='apply'),
-            InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")
-            ] ,
+        [InlineKeyboardButton(text="Вернуться к насройкам", callback_data='back_to_settings')],
     ]
 )
 

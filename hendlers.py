@@ -3,7 +3,7 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram import types
 from aiogram.enums import ParseMode
-from kb import AGE_KB, SHIFT_KB, START_KB, BACK_KB, ADMIN_KB, BOOL_KB, STAFF_KB, BACK_SETTINGS_KB, SKOTS_BACK
+from kb import AGE_KB, SHIFT_KB, START_KB, BACK_KB, ADMIN_KB, BOOL_KB, STAFF_KB, BACK_SETTINGS_KB, SKOTS_BASK
 
 
 async def render_start(target: Message | CallbackQuery):
@@ -119,7 +119,7 @@ async def render_success(callback: CallbackQuery):
 
 async def render_show_get_slots(callback: CallbackQuery):
     text = "Свободные места есть. Оставьте заявку и администратор свяжится свами!"
-    await callback.message.edit_text(text=text, reply_markup=SKOTS_BACK)
+    await callback.message.edit_text(text=text, reply_markup=SKOTS_BASK)
 
 
 async def render_not_slots(target: Message | CallbackQuery):
