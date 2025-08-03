@@ -6,11 +6,18 @@ BACK_KB = InlineKeyboardMarkup(
     ]
 )
 
-GO_BACK = [InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")] 
+SKOTS_BACK = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="Вернуться к насройкам", callback_data='back_to_settings')],
+    ]
+)
 
 BACK_SETTINGS_KB = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="Вернуться к насройкам", callback_data='back_to_settings')],
+        [
+            InlineKeyboardButton(text="Оставить заявку", callback_data='apply'),
+            InlineKeyboardButton(text="🔙 Назад", callback_data="go_back")
+            ] ,
     ]
 )
 
@@ -45,7 +52,7 @@ START_KB = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(text="Оставить заявку", callback_data='apply'),
-            InlineKeyboardButton(text="Наличее мест", callback_data='сheck')
+            InlineKeyboardButton(text="Наличие мест", callback_data='сheck')
         ],        
         [
             InlineKeyboardButton(text="Расписание и оплата", callback_data='schedule'),
@@ -58,7 +65,7 @@ START_KB = InlineKeyboardMarkup(
 
 ADMIN_KB = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="Наличее мест", callback_data='settings')],
+        [InlineKeyboardButton(text="Наличие мест", callback_data='settings')],
         [InlineKeyboardButton(text="Администраторы", callback_data='get_staff')],
     ]
 )
